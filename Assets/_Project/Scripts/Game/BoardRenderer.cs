@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using DG.Tweening;
 using NaughtyAttributes;
 using UnityEngine;
-using UnityEngine.U2D;
 
 namespace Match3
 {
@@ -20,6 +19,12 @@ namespace Match3
             public Sprite sprite;
         }
 
+        [ShowAssetPreview]
+        public Sprite noPiece;
+
+        [SerializeField] AudioClip swapSound;
+        [SerializeField] AudioClip selectSound;
+
         [SerializeField] Color mouseHoverPieceColor;
         [SerializeField] Color mouseClickPieceColor;
 
@@ -34,40 +39,40 @@ namespace Match3
                 board = FindObjectOfType<Board> ();
         }
 
-        void IBoardRenderer.InitializeBoard ()
+        void IBoardRenderer.InitializeBoard (Piece[, ] pieces)
         {
             var size = board.Size;
-            renderers = new SpriteRenderer[size.x, size.y];
-            for (int y = 0; y < size.y; y++)
+            if (renderers == null)
             {
-                for (int x = 0; x < size.x; x++)
+                renderers = new SpriteRenderer[size.x, size.y];
+                for (int y = 0; y < size.y; y++)
                 {
-                    var renderer = board.transform.GetChild ((y * size.x) + x)
-                        .GetComponent<SpriteRenderer> ();
-                    renderers[x, y] = renderer;
+                    for (int x = 0; x < size.x; x++)
+                    {
+                        var renderer = board.transform.GetChild ((y * size.x) + x)
+                            .GetComponent<SpriteRenderer> ();
+                        renderers[x, y] = renderer;
+                        renderer.sprite = sprites[pieces[x, y].type].sprite;
+                    }
                 }
+                distanceBetweenTiles = Mathf.Abs ((renderers[0, 0].transform.localPosition - renderers[0, 1].transform.position).y);
             }
-
-            distanceBetweenTiles = Mathf.Abs ((renderers[0, 0].transform.localPosition - renderers[0, 1].transform.position).y);
-        }
-
-        void IBoardRenderer.RenderBoard (Piece[, ] pieces)
-        {
-            for (int y = 0; y < board.Size.y; y++)
+            else
             {
-                for (int x = 0; x < board.Size.x; x++)
+                for (int y = 0; y < size.y; y++)
                 {
-                    if (pieces[x, y].type != -1)
+                    for (int x = 0; x < size.x; x++)
+                    {
                         GetRenderer (x, y).sprite = sprites[pieces[x, y].type].sprite;
-                    else
-                        GetRenderer (x, y).sprite = null;
+                    }
                 }
             }
+
         }
 
-        void IBoardRenderer.PiecesChanged (params Piece[] pieces)
+        void IBoardRenderer.PiecesChanged (List<Piece> pieces)
         {
-            for (int i = 0; i < pieces.Length; i++)
+            for (int i = 0; i < pieces.Count; i++)
             {
                 var piece = pieces[i];
                 var x = piece.coordinates.x;
@@ -81,7 +86,13 @@ namespace Match3
 
         public void OnPieceClicked (Vector2Int coor)
         {
+            AudioPlayer.PlaySFX (selectSound);
             GetRenderer (coor.x, coor.y).color = mouseClickPieceColor;
+        }
+
+        public void OnPieceSwap (Vector2Int coor)
+        {
+            AudioPlayer.PlaySFX (swapSound);
         }
 
         public void OnPieceUp (Vector2Int coor)
@@ -104,68 +115,49 @@ namespace Match3
             var fromPiece = GetRenderer (from.x, from.y);
             var toPiece = GetRenderer (to.x, to.y);
 
-            fromPiece.transform.DOMove (toPiece.transform.position, pieceSwappingSpeed)
+            fromPiece.transform.DOMove (toPiece.transform.localPosition, pieceSwappingSpeed)
                 .SetEase (Ease.InOutQuad);
-            yield return toPiece.transform.DOMove (fromPiece.transform.position, pieceSwappingSpeed)
+            yield return toPiece.transform.DOMove (fromPiece.transform.localPosition, pieceSwappingSpeed)
                 .SetEase (Ease.InOutQuad).WaitForCompletion ();
             //after the movement, we swap the physical pieces back
-            var oldToPos = fromPiece.transform.position;
-            fromPiece.transform.position = toPiece.transform.position;
-            toPiece.transform.position = oldToPos;
+            var oldToPos = fromPiece.transform.localPosition;
+            fromPiece.transform.localPosition = toPiece.transform.localPosition;
+            toPiece.transform.localPosition = oldToPos;
         }
 
-        /// <summary>
-        /// Translate cords by the value of by
-        /// </summary>
-        /// <param name="cords">the pieces to translate down</param>
-        /// <param name="by">How much to translate down</param>
-        /// <returns></returns>
-        public IEnumerator Fall (List<Piece> pieces, List<Piece> to)
+        public IEnumerator FallBy (List<Piece> pieces, int by)
         {
-            foreach (var match in to)
-            {
-                GetRenderer (match.coordinates.x, match.coordinates.y).enabled = false;
-            }
-
-            var finished = 1;
+            var finished = 0;
             for (int i = 0; i < pieces.Count; i++)
             {
                 //make the piece falls to match position
-                Debug.Log ($"x: {pieces[i].coordinates.x}, y: {pieces[i].coordinates.y} to x: {pieces[i].coordinates.x}, y: {pieces[i].coordinates.y - to.Count}");
                 var piece = GetRenderer (pieces[i].coordinates.x, pieces[i].coordinates.y);
-                var matchPiece = GetRenderer (pieces[i].coordinates.x, pieces[i].coordinates.y - to.Count);
-                var matchPos = matchPiece.transform.localPosition;
+                var toRenderer = GetRenderer (pieces[i].coordinates.x, pieces[i].coordinates.y - by);
+                var toPos = toRenderer.transform.localPosition;
                 var initialPos = piece.transform.localPosition;
-                if (i == pieces.Count - 1)
-                    yield return piece.transform.DOMove (matchPos, 0.2f)
+                if (i == pieces.Count - 1) // we wait for the last one, every piece is moving in parallel
+                    yield return piece.transform.DOMove (toPos, 0.2f)
                         .SetEase (Ease.InOutQuad)
                         .OnComplete (() =>
                         {
-                            to[finished].type = pieces[finished].type;
-                            matchPiece.sprite = sprites[to[finished].type].sprite;
+                            toRenderer.sprite = null;
                             piece.transform.localPosition = initialPos;
                             finished++;
                         })
                         .WaitForCompletion ();
                 else
-                    piece.transform.DOMove (matchPos, 0.2f)
+                    piece.transform.DOMove (toPos, 0.2f)
                     .SetEase (Ease.InOutQuad)
                     .OnComplete (() =>
                     {
-                        to[finished].type = pieces[finished].type;
-                        matchPiece.sprite = sprites[to[finished].type].sprite;
+                        toRenderer.sprite = null;
                         piece.transform.localPosition = initialPos;
                         finished++;
                     });
             }
-
-            foreach (var match in to)
-            {
-                GetRenderer (match.coordinates.x, match.coordinates.y).enabled = true;
-            }
         }
 
-        public IEnumerator GenerateGemVertical (List<Piece> pieces)
+        public IEnumerator GenerateGem (List<Piece> pieces)
         {
             for (int i = 0; i < pieces.Count; i++)
             {
@@ -173,9 +165,8 @@ namespace Match3
                 var transf = renderer.transform;
                 var initialPos = transf.localPosition;
                 renderer.sprite = sprites[pieces[i].type].sprite;
-                //Debug.Log($"moving {pieces[i].coordinates} to {}");
                 transf.localPosition = new Vector3 (transf.localPosition.x, transf.localPosition.y + (pieces.Count * distanceBetweenTiles));
-                if (i == pieces.Count - 1)
+                if (i == pieces.Count - 1) // we wait for the last one, every piece is moving in parallel
                     yield return transf.DOMove (initialPos, 0.2f)
                         .SetEase (Ease.InOutQuad)
                         .WaitForCompletion ();
@@ -185,14 +176,23 @@ namespace Match3
             }
         }
 
-        public IEnumerator GenerateGemHorizontal (List<Piece> cords)
-        {
-            throw new NotImplementedException ();
-        }
-
         SpriteRenderer GetRenderer (int x, int y)
         {
             return renderers[x, y];
+        }
+
+        public IEnumerator PostFall (List<Piece> matches)
+        {
+            yield return null;
+        }
+
+        public IEnumerator Match (List<Piece> pieces)
+        {
+            foreach (var match in pieces)
+            {
+                GetRenderer (match.coordinates.x, match.coordinates.y).sprite = noPiece;
+            }
+            yield return null;
         }
     }
 }

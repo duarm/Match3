@@ -2,34 +2,37 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
-public class Piece : MonoBehaviour
+namespace Match3
 {
-    public int type;
-    public Vector2Int coordinates;
-    public event Action<Vector2Int> MouseClicked;
-    public event Action<Vector2Int> MouseEnter;
-    public event Action<Vector2Int> MouseExit;
-    public event Action<Vector2Int> MouseUp;
-
-    
-    private void OnMouseDown ()
+    public class Piece : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler, IPointerUpHandler
     {
-        MouseClicked.Invoke (coordinates);
-    }
+        public int type;
+        public Vector2Int coordinates;
+        public event Action<Vector2Int> PointerClick;
+        public event Action<Vector2Int> PointerEnter;
+        public event Action<Vector2Int> PointerExit;
+        public event Action<Vector2Int> PointerUp;
 
-    private void OnMouseUp ()
-    {
-        MouseUp.Invoke (coordinates);
-    }
+        public void OnPointerEnter (PointerEventData eventData)
+        {
+            PointerEnter.Invoke (coordinates);
+        }
 
-    private void OnMouseEnter ()
-    {
-        MouseEnter.Invoke (coordinates);
-    }
+        public void OnPointerExit (PointerEventData eventData)
+        {
+            PointerExit.Invoke (coordinates);
+        }
 
-    private void OnMouseExit ()
-    {
-        MouseExit.Invoke (coordinates);
+        public void OnPointerClick (PointerEventData eventData)
+        {
+            PointerClick.Invoke (coordinates);
+        }
+
+        public void OnPointerUp (PointerEventData eventData)
+        {
+            PointerUp.Invoke (coordinates);
+        }
     }
 }
