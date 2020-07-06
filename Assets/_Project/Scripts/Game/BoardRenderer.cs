@@ -190,7 +190,9 @@ namespace Match3
         {
             foreach (var match in pieces)
             {
-                GetRenderer (match.coordinates.x, match.coordinates.y).sprite = noPiece;
+                var renderer = GetRenderer (match.coordinates.x, match.coordinates.y);
+                VFXController.Instance.Trigger ("MatchVFX", renderer.transform.position);
+                renderer.sprite = noPiece;
             }
             yield return null;
         }

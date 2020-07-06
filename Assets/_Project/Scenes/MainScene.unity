@@ -1920,7 +1920,7 @@ GameObject:
   - component: {fileID: 1070076943}
   - component: {fileID: 1070076945}
   - component: {fileID: 1070076946}
-  m_Layer: 8
+  m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3291,6 +3291,7 @@ GameObject:
   - component: {fileID: 1867880976}
   - component: {fileID: 1867880975}
   - component: {fileID: 1867880978}
+  - component: {fileID: 1867880979}
   m_Layer: 0
   m_Name: _App
   m_TagString: Untagged
@@ -3434,6 +3435,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87bf4435b6e40e74eaf757874167fdc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1867880979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1867880974}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28e411c15f4fedc85ab4f945eac5de01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vfxConfig:
+  - prefab: {fileID: 1457732618886568195, guid: ef9d000a2c19badc99abc260f120334d,
+      type: 3}
+    lifetime: 1
+    vfxOverride: []
 --- !u!1 &1910960364
 GameObject:
   m_ObjectHideFlags: 0
